@@ -539,7 +539,9 @@ void BufferProcessor::processThread() {
         process_frame.tofiBuffer = tofi_compute_io_buff;
         process_frame.size = m_tofiBufferSize;
 
+#ifdef NVIDIA
         SaveProcessedFrame(process_frame, totalProcessedFrame);
+#endif
 
         if (!m_process_done_Q.push(std::move(process_frame))) {
             LOG(WARNING) << "processThread: Push timeout to "
