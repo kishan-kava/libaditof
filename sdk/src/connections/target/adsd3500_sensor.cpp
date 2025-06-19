@@ -460,6 +460,8 @@ aditof::Status Adsd3500Sensor::stop() {
         dev->started = false;
     }
 
+    status = adsd3500_getInterruptandReset();
+
     return status;
 }
 
