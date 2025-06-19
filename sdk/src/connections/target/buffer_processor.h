@@ -121,7 +121,8 @@ class BufferProcessor : public aditof::V4lBufferAccessInterface {
     aditof::Status open();
     aditof::Status setInputDevice(VideoDev *inputVideoDev);
     aditof::Status setVideoProperties(int frameWidth, int frameHeight,
-                                      int WidthInBytes, int HeightInBytes);
+                                      int WidthInBytes, int HeightInBytes,
+                                      int modeNumber);
     aditof::Status setProcessorProperties(uint8_t *iniFile,
                                           uint16_t iniFileLength,
                                           uint8_t *calData,
@@ -209,4 +210,6 @@ class BufferProcessor : public aditof::V4lBufferAccessInterface {
     static constexpr int TIME_OUT_DELAY = 5;
 
     int m_maxTries = 3;
+
+    uint8_t m_currentModeNumber;
 };
