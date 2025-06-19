@@ -66,6 +66,7 @@
 #define SIZE_OF_MODES_FROM_CCB 256
 
 uint16_t chip_id;
+bool dev_started = false;
 
 struct CalibrationData {
     std::string mode;
@@ -390,6 +391,10 @@ aditof::Status Adsd3500Sensor::open() {
         return status;
     }
 
+    if (status == aditof::Status::OK) {
+        dev_started = true;
+    }
+
     return status;
 }
 
@@ -442,6 +447,7 @@ aditof::Status Adsd3500Sensor::stop() {
     struct VideoDev *dev;
 
     m_bufferProcessor->stopThreads();
+
     for (unsigned int i = 0; i < m_implData->numVideoDevs; i++) {
         dev = &m_implData->videoDevs[i];
 
@@ -1434,7 +1440,7 @@ aditof::Status Adsd3500Sensor::adsd3500_getInterruptandReset() {
 
     // Wait for 2 sec for interrupt
     LOG(INFO) << "Waiting for interrupt.";
-    int secondsTimeout = 2;
+    int secondsTimeout = 1;
     int secondsWaited = 0;
     int secondsWaitingStep = 1;
     while (!m_chipResetDone && secondsWaited < secondsTimeout) {
