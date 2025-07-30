@@ -35,6 +35,7 @@
 #include <queue>
 #include <thread>
 #include <vector>
+#include <fstream>
 
 #include "v4l_buffer_access_interface.h"
 
@@ -186,6 +187,10 @@ class BufferProcessor : public aditof::V4lBufferAccessInterface {
         size_t size = 0;
         std::shared_ptr<uint16_t> tofiBuffer;
     };
+
+    std::fstream m_file;
+    aditof::Status SaveProcessedFrame(const Tofi_v4l2_buffer& process_frame, u_int totalProcessedFrame);
+    aditof::Status createFile();
 
     // Thread-safe pool of empty raw frame buffers for use by capture thread
     ThreadSafeQueue<std::shared_ptr<uint8_t>> m_v4l2_input_buffer_Q;

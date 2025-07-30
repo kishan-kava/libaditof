@@ -68,6 +68,8 @@ static int xioctl(int fh, unsigned int request, void *arg) {
     return r;
 }
 
+std::string ssd_location = "/mnt/media/";
+
 BufferProcessor::BufferProcessor()
     : m_v4l2_input_buffer_Q(MAX_QUEUE_SIZE),
       m_capture_to_process_Q(MAX_QUEUE_SIZE),
@@ -251,6 +253,46 @@ aditof::Status BufferProcessor::setProcessorProperties(
 
     return aditof::Status::OK;
 }
+
+aditof::Status BufferProcessor::createFile()
+{
+    std::string m_outputFileName;
+    char time_buffer[128];
+    time_t rawtime;
+    time(&rawtime);
+    struct tm timeinfo;
+
+    localtime_r(&rawtime, &timeinfo);
+    strftime(time_buffer, sizeof(time_buffer), "%Y_%m_%d_%H_%M_%S",
+             &timeinfo);
+    m_outputFileName = ssd_location + "frame_" + std::string(time_buffer) + ".bin";
+
+    LOG(INFO) << __func__ << ": m_outputFileName: " << m_outputFileName;
+    m_file = std::fstream(m_outputFileName,
+                          std::ios::app | std::ios::out | std::ios::binary);
+
+    if (!m_file.is_open()) {
+        LOG(ERROR) << "Failed to create output file!";
+        return aditof::Status::GENERIC_ERROR;
+    }
+
+    return aditof::Status::OK;
+}
+aditof::Status BufferProcessor::SaveProcessedFrame(const Tofi_v4l2_buffer& process_frame, u_int totalProcessedFrame){
+    if(totalProcessedFrame == 0){
+        createFile();
+        return aditof::Status::OK;
+    }
+
+    if (m_file.is_open()) {
+        m_file.write(reinterpret_cast<char*>(process_frame.tofiBuffer.get()), m_tofiBufferSize);
+    } else {
+        LOG(WARNING) << "File not open for writing!";
+        return aditof::Status::GENERIC_ERROR;
+    }
+    return aditof::Status::OK;
+}
+
 /**
  * @function BufferProcessor::captureFrameThread
  *
@@ -377,7 +419,7 @@ void BufferProcessor::captureFrameThread() {
  */
 void BufferProcessor::processThread() {
     long long totalProcessTime = 0;
-    int totalProcessedFrame = 0;
+    u_int totalProcessedFrame = 0;
 
     while (!stopThreadsFlag) {
         Tofi_v4l2_buffer process_frame;
@@ -454,7 +496,6 @@ void BufferProcessor::processThread() {
             std::chrono::duration<double, std::milli> processTime =
                 processEnd - processStart;
             totalProcessTime += static_cast<long long>(processTime.count());
-            totalProcessedFrame++;
 
             m_tofiComputeContext->p_depth_frame = tempDepthFrame;
             m_tofiComputeContext->p_ab_frame = tempAbFrame;
@@ -464,6 +505,8 @@ void BufferProcessor::processThread() {
         process_frame.tofiBuffer = tofi_compute_io_buff;
         process_frame.size = m_tofiBufferSize;
 
+        SaveProcessedFrame(process_frame, totalProcessedFrame);
+
         if (!m_process_done_Q.push(std::move(process_frame))) {
             LOG(WARNING) << "processThread: Push timeout to "
                             "m_process_done_Q, ProcessedQueueSize: "
@@ -472,6 +515,7 @@ void BufferProcessor::processThread() {
             m_v4l2_input_buffer_Q.push(process_frame.data);
             continue;
         }
+        totalProcessedFrame++;
     }
     if (totalProcessedFrame > 0) {
         double averageProcessTime =
